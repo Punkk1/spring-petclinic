@@ -1,0 +1,34 @@
+trigger:
+- main  # Triggers on changes to the main branch
+
+pool:
+  vmImage: 'ubuntu-latest'  # Linux is faster for Java builds
+
+variables:
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+
+steps:
+- task: JavaToolInstaller@0
+  inputs:
+    versionSpec: '17'  # PetClinic requires Java 17
+    jdkArchitectureOption: 'x64'
+
+- task: Cache@2
+  inputs:
+    key: 'maven | "$(Agent.OS)" | pom.xml'
+    restoreKeys: |
+      maven | "$(Agent.OS)"
+    path: $(MAVEN_CACHE_FOLDER)
+  displayName: 'Cache Maven dependencies'
+
+- task: Maven@3
+  inputs:
+    mavenPomFile: 'pom.xml'
+    goals: 'clean package'
+    publishJUnitResults: true
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    pathtoPublish: 'target/*.jar'
+    artifactName: 'petclinic'
